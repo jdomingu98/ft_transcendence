@@ -1,0 +1,6 @@
+[submodule "ft_trascendence_frontend"]
+	path = ft_trascendence_frontend
+	url = https://github.com/jdomingu98/ft_trascendence_frontend.git
+[submodule "ft_trascendence_backend"]
+	path = ft_trascendence_backend
+	url = https://github.com/jdomingu98/ft_trascendence_backend.git
