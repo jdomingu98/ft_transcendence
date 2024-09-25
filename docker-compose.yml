@@ -26,6 +26,7 @@ services:
       - app-network
     depends_on:
       - postgres
+      - redis
 
   postgres:
     image: postgres:latest
@@ -60,6 +61,12 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/lib/letsencrypt:/var/lib/letsencrypt
     entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
+    networks:
+      - app-network
+
+  redis:
+    image: redis:latest
+    restart: always
     networks:
       - app-network
 volumes:
