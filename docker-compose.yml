@@ -1,66 +1,19 @@
-version: '3.8'
 
 services:
-  frontend:
-    container_name: frontend
-    build:
-      context: ./ft_transcendence_frontend
-    ports:
-      - "5173:80"
-    networks:
-      - app-network
-    depends_on:
-      - backend
-
-  backend:
-    container_name: backend
-    build:
-      context: ./ft_transcendence_backend
-    volumes:
-      - ./ft_transcendence_backend/media:/app/media
-    env_file:
-      - ./ft_transcendence_backend/backend/.env
-    expose:
-      - "8000"
-    networks:
-      - app-network
-    depends_on:
-      - postgres
-      - redis
-
   postgres:
     image: postgres:latest
     restart: always
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWD}
-      POSTGRES_DB: ${DB_NAME}
+    expose:
+      - "5432"
+    env_file:
+      - ft_transcendence_backend/backend/.env
+    healthcheck:
+      test: ["CMD", "pg_isready","-d", "$${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - db_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - /etc/letsencrypt:/etc/letsencrypt
-    networks:
-      - app-network
-    depends_on:
-      - backend
-      - frontend
-      - certbot
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/lib/letsencrypt:/var/lib/letsencrypt
-    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
     networks:
       - app-network
 
@@ -68,6 +21,50 @@ services:
     image: redis:latest
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     restart: always
+    networks:
+      - app-network
+
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    env_file:
+      - ft_transcendence_backend/backend/.env
+    build:
+      context: ft_transcendence_backend
+      args:
+        PASSPHRASE: $${JWT_PRIVATE_KEY_PASSWORD}
+    volumes:
+      - ./ft_transcendence_backend/media:/app/media
+    expose:
+      - "8000"
+    networks:
+      - app-network
+
+  frontend:
+    depends_on:
+      - backend
+    restart: on-failure
+    build:
+      context: ft_transcendence_frontend
+    expose:
+      - "5173"
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: nginx
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "8080:80"
+      - "8443:443"
     networks:
       - app-network
 volumes:
