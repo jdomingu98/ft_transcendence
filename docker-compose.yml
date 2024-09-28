@@ -1,0 +1,73 @@
+
+services:
+  postgres-db:
+    image: postgres:latest
+    env_file:
+      - ft_transcendence_backend/backend/.env
+    container_name: postgres
+    environment:
+      PGUSER: $${POSTGRES_USER}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    restart: always
+    networks:
+      - app-network
+
+  backend:
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    env_file:
+      - ft_transcendence_backend/backend/.env
+    build:
+      context: ft_transcendence_backend
+      args:
+        PASSPHRASE: $${JWT_PRIVATE_KEY_PASSWORD}
+    volumes:
+      - ./ft_transcendence_backend/media:/app/media
+    expose:
+      - "8000"
+    networks:
+      - app-network
+
+  frontend:
+    depends_on:
+      - backend
+    restart: on-failure
+    build:
+      context: ft_transcendence_frontend
+    expose:
+      - "5173"
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: nginx
+    restart: always
+    depends_on:
+      - frontend
+    ports:
+      - "8080:80"
+      - "8443:443"
+    networks:
+      - app-network
+volumes:
+  db_data:
+  media: 
+networks:
+  app-network:
