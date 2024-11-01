@@ -37,8 +37,6 @@ services:
       - ft_transcendence_backend/backend/.env
     build:
       context: ft_transcendence_backend
-      args:
-        PASSPHRASE: $${JWT_PRIVATE_KEY_PASSWORD}
     volumes:
       - ./ft_transcendence_backend/media:/app/media
     expose:
