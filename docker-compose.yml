@@ -51,7 +51,7 @@ services:
     build:
       context: ft_transcendence_frontend
     expose:
-      - "5173"
+      - "4173"
     networks:
       - app-network
 
